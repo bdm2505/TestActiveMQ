@@ -1,44 +1,86 @@
+import org.apache.activemq.ActiveMQConnection;
+import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.log4j.Logger;
 
-import javax.jms.JMSException;
-import javax.jms.Message;
-import javax.jms.TextMessage;
+import javax.jms.*;
 
 public class Copyist {
+
+    private static String url = ActiveMQConnection.DEFAULT_BROKER_URL;
+
     Logger log = Logger.getLogger(getClass());
 
-    final Postman producer;
-    final Postman consumer1;
-    final Postman consumer2;
+    String queueProducer;
+    String queueConsumer1;
+    String queueConsumer2;
 
-    public Copyist(String urlProducer, String urlConsumer1, String urlConsumer2) throws JMSException {
-        producer = new Postman(urlProducer);
-        consumer1 = new Postman(urlConsumer1);
-        consumer2 = new Postman(urlConsumer2);
+    Connection connection;
+
+    public Copyist(String queueProducer, String queueConsumer1, String queueConsumer2) throws JMSException {
+
+        this.queueProducer = queueProducer;
+        this.queueConsumer1 = queueConsumer1;
+        this.queueConsumer2 = queueConsumer2;
+
+        ConnectionFactory factory = new ActiveMQConnectionFactory(url);
+        connection = factory.createConnection();
+        connection.start();
+
+        Session session = createSession();
+        Destination destination = session.createQueue(queueProducer);
+        MessageProducer producer = session.createProducer(destination);
+        Message message = session.createTextMessage("Ok!");
+
+        producer.send(message);
+        session.close();
+
     }
 
 
     public void work() throws JMSException {
-        while (!Thread.currentThread().isInterrupted()) {
-            Message message = producer.receive();
+
+            Message message = receive(queueProducer);
 
             if (notEmpty(message)) {
-                consumer1.send(message);
-                consumer2.send(message);
+                send(message, queueConsumer1);
+                send(message, queueConsumer2);
             } else {
-                log.warn("Message is Empty!");
+                log.info("Message is Empty! " + message);
+                System.out.println("Message is Empty!");
             }
-        }
-        close();
+
     }
 
     private boolean notEmpty(Message message) throws JMSException {
-        return message instanceof TextMessage && !((TextMessage) message).getText().isEmpty();
+        return !(message instanceof TextMessage && ((TextMessage) message).getText().isEmpty());
     }
 
-    private void close() {
-        producer.close();
-        consumer1.close();
-        consumer2.close();
+
+    public void send(Message message, String queue) throws JMSException {
+        log.info("send " + queue);
+        Session session = createSession();
+        Destination destination = session.createQueue(queue);
+        MessageProducer producer = session.createProducer(destination);
+        producer.send(message);
+        session.close();
+    }
+
+
+    public Message receive(String queue) throws JMSException {
+        log.info("receive " + queue);
+        Session session = createSession();
+        Destination destination = session.createQueue(queue);
+        MessageConsumer consumer = session.createConsumer(destination);
+        Message message = consumer.receive();
+        session.close();
+        return message;
+    }
+
+    private Session createSession() throws JMSException {
+        return connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+    }
+
+    public void close() throws JMSException {
+        connection.close();
     }
 }

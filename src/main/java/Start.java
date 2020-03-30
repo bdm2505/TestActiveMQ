@@ -6,11 +6,14 @@ import javax.jms.*;
 
 public class Start {
 
-    private static String url = ActiveMQConnection.DEFAULT_BROKER_URL;
+
 
     public static void main(String[] args) throws JMSException {
-        Copyist copyist = new Copyist(url, url, url);
-        copyist.work();
+        Copyist copyist = new Copyist("Queue A", "Queue B", "Queue A");
 
+        while (!Thread.currentThread().isInterrupted()) {
+            copyist.work();
+        }
+        copyist.close();
     }
 }
