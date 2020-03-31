@@ -26,32 +26,34 @@ public class Copyist {
         connection = factory.createConnection();
         connection.start();
 
-        Session session = createSession();
-        Destination destination = session.createQueue(queueProducer);
-        MessageProducer producer = session.createProducer(destination);
-        Message message = session.createTextMessage("Ok!");
+    }
 
-        producer.send(message);
-        session.close();
+    public Copyist(Connection connection, String queueProducer, String queueConsumer1, String queueConsumer2) throws JMSException {
+
+        this.queueProducer = queueProducer;
+        this.queueConsumer1 = queueConsumer1;
+        this.queueConsumer2 = queueConsumer2;
+        this.connection = connection;
+        connection.start();
 
     }
 
 
     public void work() throws JMSException {
 
-            Message message = receive(queueProducer);
+        Message message = receive(queueProducer);
 
-            if (notEmpty(message)) {
-                send(message, queueConsumer1);
-                send(message, queueConsumer2);
-            } else {
-                log.info("Message is Empty! " + message);
-                System.out.println("Message is Empty!");
-            }
+        if (notEmpty(message)) {
+            send(message, queueConsumer1);
+            send(message, queueConsumer2);
+        } else {
+            log.info("Message is Empty! " + message);
+            System.out.println("Message is Empty!");
+        }
 
     }
 
-    private boolean notEmpty(Message message) throws JMSException {
+    public boolean notEmpty(Message message) throws JMSException {
         return !(message instanceof TextMessage && ((TextMessage) message).getText().isEmpty());
     }
 
@@ -76,7 +78,7 @@ public class Copyist {
         return message;
     }
 
-    private Session createSession() throws JMSException {
+    public Session createSession() throws JMSException {
         return connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
     }
 
